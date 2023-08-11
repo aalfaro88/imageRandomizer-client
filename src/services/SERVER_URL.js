@@ -2,7 +2,7 @@
 
 let SERVER_URL;
 
-if (window.location.hostname.includes("localhost:5173")) {
+if (window.location.host.includes("localhost:5173")) {
   SERVER_URL = "http://localhost:4000";
 } else {
   SERVER_URL = "https://image-jumble-server.adaptable.app";

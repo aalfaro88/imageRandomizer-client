@@ -23,6 +23,8 @@ function RandomizePage() {
 
   const currentURL = window.location.href;
   const sessionIdIndex = currentURL.indexOf("session_id=");
+
+  console.log(window.location.host)
   
   let sessionId;
   
