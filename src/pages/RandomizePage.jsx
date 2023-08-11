@@ -18,6 +18,8 @@ function RandomizePage() {
   const projectId = searchParams.get("projectId");
   const [stripe, setStripe] = useState(null);
   const { user, setUser } = useContext(AuthContext);
+  const [processingProgress, setProcessingProgress] = useState(0);
+
 
   const currentURL = window.location.href;
   const sessionIdIndex = currentURL.indexOf("session_id=");
@@ -31,9 +33,6 @@ function RandomizePage() {
     sessionId = false;
     // console.log("No session_id parameter found in the URL");
   }
-
-
-  
 
   useEffect(() => {
     async function fetchStripeKey() {
@@ -77,8 +76,7 @@ function RandomizePage() {
       console.log('Sending request to add token:', {
         userId: user._id,
       });
-  
-      // Make a POST request to increment the token count
+
       const response = await post(`/users/${user._id}/update-tokens`);
       const updatedUserProfile = response.data;
       setUser(prevUser => ({ ...prevUser, randomize_tokens: updatedUserProfile.randomize_tokens }));
@@ -113,13 +111,30 @@ function RandomizePage() {
     }
   }, [projectId]);
   
-  
-  
-
-
   const handleRandomize = () => {
-    console.log("Hello")
-    setIsLoading(true); 
+    console.log("Starting handleRandomize...");
+    setIsLoading(true);
+  
+    console.log("Creating EventSource...");
+    const eventSource = new EventSource(`${SERVER_URL}/overlay-images-progress`);
+  
+    eventSource.onopen = () => {
+      console.log("EventSource connection opened.");
+    };
+  
+    eventSource.onmessage = (event) => {
+      console.log("Received message from EventSource:", event.data);
+      const data = JSON.parse(event.data);
+      const progress = data.progress;
+      console.log(`Processing progress: ${progress}%`);
+      setProcessingProgress(progress); 
+    };
+    
+  
+    eventSource.onerror = (error) => {
+      console.error("Error with SSE:", error);
+    };
+  
     const overlayImages = project.layers;
     const imageUrls = overlayImages.map((layer) => {
       const layerId = layer.layerId;
@@ -128,29 +143,32 @@ function RandomizePage() {
       });
       return images;
     });
-    
+  
     console.log("Image URLs to be sent to the server:", imageUrls);
- 
-    const numImages = collectionSize; 
-    
-    post("/overlay-images", { imageUrls, numImages }) 
-    .then((response) => {
-      setTransformedImages(response.data.imageUrls);
-    })
-    .catch((error) => {
-      console.error("Error sending image URLs to the server:", error);
-    })
-    .finally(() => {
-      setIsLoading(false);
-    });
-};
+  
+    const numImages = collectionSize;
+  
+    post("/overlay-images", { imageUrls, numImages })
+      .then((response) => {
+        console.log("Image processing completed.");
+        setTransformedImages(response.data.imageUrls);
+      })
+      .catch((error) => {
+        console.error("Error sending image URLs to the server:", error);
+      })
+      .finally(() => {
+        console.log("Finishing handleRandomize...");
+        setIsLoading(false);
+        eventSource.close();
+      });
+  };
+  
   
   
 const handlePayment = async () => {
   try {
     setIsLoading(true);
 
-    // Step 1: Initiate the payment process using Stripe API
     const paymentResponse = await fetch(`${SERVER_URL}/create-hello-payment-intent`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -165,10 +183,8 @@ const handlePayment = async () => {
 
     const paymentData = await paymentResponse.json();
 
-    // Set the client secret in the state
     setClientSecret(paymentData.clientSecret);
 
-    // Step 2: Redirect to Stripe checkout
     const { error } = await stripe.redirectToCheckout({
       sessionId: paymentData.clientSecret,
     });
@@ -179,7 +195,6 @@ const handlePayment = async () => {
       return;
     }
 
-    // Payment was successful or user closed the payment modal
     console.log("Stripe checkout completed.");
 
     const webhookResponse = await fetch(`${SERVER_URL}/get-webhook-response`, {
@@ -189,12 +204,11 @@ const handlePayment = async () => {
 
     if (webhookResponse.ok) {
       const responseData = await webhookResponse.json();
-      // Use the responseData to update the frontend UI or provide a confirmation
+
       console.log("Webhook response:", responseData);
     } else {
       console.error("Error getting webhook response:", webhookResponse.statusText);
     }
-
 
   } catch (error) {
     console.error("Error:", error);
@@ -245,7 +259,7 @@ const handlePayment = async () => {
                 className="collection-input"
               />
             </div>
-          </label> {/* Close the <label> element */}
+          </label>
           <button className="randomize-button" onClick={handleRandomize}>
             Randomize
           </button>
@@ -270,12 +284,15 @@ const handlePayment = async () => {
           ))}
         </div>
         <div className="imagesAndDownload">
-          {isLoading && (
-            <div className="loading-overlay">
-              <div className="loading-spinner"></div>
-              <p className="do-not-refresh">Do not refresh...</p>
-            </div>
-          )}
+        {isLoading && (
+          <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <div className="progress-text">
+            {isLoading && <p>Processing: {processingProgress}%</p>}
+          </div>
+          <p className="do-not-refresh">Do not refresh...</p>
+        </div>
+        )}
           <div className="layer-images-random">
             {transformedImages.map((imageUrl, idx) => (
               <div key={idx} className="image-wrapper">

@@ -40,7 +40,6 @@ button:hover {
   background-color: #d5d5d5; 
 }
 
-
 /* NAVBAR and FOOTER*/
 
 .navbar {
@@ -280,7 +279,7 @@ a:hover{
 }
 
 .error-message {
-  color: white; /* Change the text color to white */
+  color: white; 
   margin-top: 10px;
 }
 
@@ -395,7 +394,7 @@ a:hover{
   justify-content: flex-start; 
   padding: 20px;
   width: 60%;
-  max-height: 100vh; /* Set the max height to the height of the viewport */
+  max-height: 100vh; 
   border: 1px solid white;
   border-radius: 10px;
   background-color: rgba(255, 255, 255, 0.1);
@@ -648,7 +647,19 @@ a:hover{
 .do-not-refresh {
   color: white;
   margin-top: 10px;
-  font-size: 1.5rem;
+  font-size: 1rem;
+}
+
+.progress-text {
+  color: white;
+  margin: 0px;
+  font-size: 1.6rem;
+}
+
+.progress-text p{
+  color: white;
+  margin: 0px;
+  font-size: 1.4rem;
 }
 
 .disabled-button {
